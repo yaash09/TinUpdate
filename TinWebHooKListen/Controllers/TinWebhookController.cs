@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -46,7 +46,7 @@ namespace TinWebHooKListen.Controllers
                     conn.ConnectionString = ConnectionString;
                     conn.Open();
 
-                    SqlCommand command = new SqlCommand("SELECT * FROM [dbo].[transactions] where [complaincelyId] = @compId", conn);
+                    SqlCommand command = new SqlCommand("SELECT [tax1099Id], [complaincelyId] FROM [dbo].[transactions] where [complaincelyId] = @compId", conn);
 
                     command.Parameters.Add(new SqlParameter("compId", StatusResponse.id));
 
@@ -55,23 +55,31 @@ namespace TinWebHooKListen.Controllers
                         //check if there are more than one records
                         while (reader.Read())
                         {
-                            Console.WriteLine(String.Format("{0} \t | {1} \t | {2} \t | {3}", reader[0], reader[1], reader[2], reader[3]));
-                            string complaincelyId = String.Format("{0}", reader["complaincelyId"]);
-                            string tax1099Id = String.Format("{0}", reader["tax1099Id"]);
-                            StatusResponse.tax1099Id = tax1099Id;
-                             
-                            using (SqlConnection updateConnection = new SqlConnection())
+                            try
                             {
-                                updateConnection.ConnectionString = ConnectionString;
-                                updateConnection.Open();
+                                Console.WriteLine(String.Format("{0} \t | {1} \t | {2} \t | {3}", reader[0], reader[1], reader[2], reader[3]));
+                                string complaincelyId = String.Format("{0}", reader["complaincelyId"]);
+                                string tax1099Id = String.Format("{0}", reader["tax1099Id"]);
+                                StatusResponse.tax1099Id = tax1099Id;
 
-                                SqlCommand updateCommand = new SqlCommand("UPDATE [dbo].[transactions] SET status = @status, irs_code = @irs_code WHERE complaincelyId = @compId ; ", updateConnection);
-                                updateCommand.Parameters.Add(new SqlParameter("status", StatusResponse.status));
-                                updateCommand.Parameters.Add(new SqlParameter("irs_code", StatusResponse.irs_code));
-                                updateCommand.Parameters.Add(new SqlParameter("compId", complaincelyId));
-                                updateCommand.ExecuteNonQuery();
-                                updateConnection.Close();
+                                using (SqlConnection updateConnection = new SqlConnection())
+                                {
+                                    updateConnection.ConnectionString = ConnectionString;
+                                    updateConnection.Open();
+
+                                    SqlCommand updateCommand = new SqlCommand("UPDATE [dbo].[transactions] SET status = @status, irs_code = @irs_code WHERE complaincelyId = @compId ; ", updateConnection);
+                                    updateCommand.Parameters.Add(new SqlParameter("status", StatusResponse.status));
+                                    updateCommand.Parameters.Add(new SqlParameter("irs_code", StatusResponse.irs_code));
+                                    updateCommand.Parameters.Add(new SqlParameter("compId", complaincelyId));
+                                    updateCommand.ExecuteNonQuery();
+                                    updateConnection.Close();
+                                }
                             }
+                            catch (Exception e)
+                            {
+                                Console.WriteLine("Failed while updating record in transaction DB {0}", e);
+                            }
+                            
                         }
                     }
                     conn.Close();
